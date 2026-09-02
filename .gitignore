@@ -1,0 +1,32 @@
+# Flutter & Dart
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/.pub-cache/
+mobile/.pub/
+mobile/.env
+
+# Next.js & Web
+web/**/.next/
+web/**/node_modules/
+web/**/.env.local
+web/**/out/
+web/**/.vercel/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Environment Variables & Secrets (CRITICAL)
+.env
+*.env
+*.env.local
+!*.env.example
+
+# IDEs & System
+.DS_Store
+.idea/
+*.iml
+*.log
