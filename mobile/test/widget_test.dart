@@ -1,13 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:quickopia/app.dart';
+import 'package:quickopia/config/supabase_config.dart';
 
 void main() {
-  testWidgets('QuickopiaApp boots to splash screen smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const QuickopiaApp());
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+    await SupabaseConfig.initialize();
+  });
 
-    // Verify that the splash screen shows the Quickopia brand name
-    expect(find.text('Quickopia'), findsOneWidget);
-    expect(find.text('On-Demand Shopping & Fast Delivery'), findsOneWidget);
+  testWidgets('QuickopiaApp boots to AuthGate and renders login screen', (WidgetTester tester) async {
+    await tester.pumpWidget(const QuickopiaApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quickopia'), findsWidgets);
+    expect(find.text('Log In'), findsOneWidget);
   });
 }

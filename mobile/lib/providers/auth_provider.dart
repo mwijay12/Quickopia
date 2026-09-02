@@ -1,0 +1,134 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import '../models/profile_model.dart';
+import '../services/auth_service.dart';
+
+enum AuthStatus { loading, unauthenticated, authenticated, error }
+
+class AuthProvider extends ChangeNotifier {
+  final AuthService _authService = AuthService();
+  StreamSubscription? _authSub;
+
+  AuthStatus status = AuthStatus.loading;
+  Profile? profile;
+  String? errorMessage;
+
+  AuthProvider() {
+    _init();
+  }
+
+  void _init() {
+    // React to login/logout/token-refresh events automatically,
+    // including restoring a session on app restart.
+    try {
+      _authSub = _authService.authStateChanges.listen((state) async {
+        final session = state.session;
+        if (session == null) {
+          status = AuthStatus.unauthenticated;
+          profile = null;
+          notifyListeners();
+        } else {
+          await _loadProfile();
+        }
+      }, onError: (e) {
+        status = AuthStatus.unauthenticated;
+        notifyListeners();
+      });
+
+      // Handle cold-start where a stored session exists before stream emits
+      if (_authService.currentSession != null) {
+        _loadProfile();
+      } else {
+        status = AuthStatus.unauthenticated;
+        notifyListeners();
+      }
+    } catch (e) {
+      status = AuthStatus.unauthenticated;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadProfile() async {
+    status = AuthStatus.loading;
+    notifyListeners();
+
+    try {
+      final fetchedProfile = await _authService.fetchCurrentProfile();
+      if (fetchedProfile == null) {
+        status = AuthStatus.error;
+        errorMessage = 'Could not load your profile. Please try again.';
+      } else {
+        profile = fetchedProfile;
+        status = AuthStatus.authenticated;
+        errorMessage = null;
+      }
+    } catch (e) {
+      status = AuthStatus.error;
+      errorMessage = 'Something went wrong loading your account.';
+    }
+    notifyListeners();
+  }
+
+  Future<String?> signUp({
+    required String email,
+    required String password,
+    required String fullName,
+    required String phone,
+  }) async {
+    try {
+      await _authService.signUp(
+        email: email,
+        password: password,
+        fullName: fullName,
+        phone: phone,
+      );
+      return null; // null = success
+    } on Exception catch (e) {
+      return _friendlyError(e);
+    } catch (e) {
+      return 'Unexpected error. Please check your connection and try again.';
+    }
+  }
+
+  Future<String?> signIn({required String email, required String password}) async {
+    try {
+      await _authService.signIn(email: email, password: password);
+      return null;
+    } on Exception catch (e) {
+      return _friendlyError(e);
+    } catch (e) {
+      return 'Unexpected error. Please try again.';
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      await _authService.signOut();
+    } catch (_) {
+      // Force local logout even if network fails
+      status = AuthStatus.unauthenticated;
+      profile = null;
+      notifyListeners();
+    }
+  }
+
+  String _friendlyError(Exception e) {
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('invalid login credentials')) {
+      return 'Incorrect email or password.';
+    } else if (msg.contains('user already registered')) {
+      return 'An account with this email already exists.';
+    } else if (msg.contains('password should be at least')) {
+      return 'Password must be at least 6 characters.';
+    } else if (msg.contains('network') || msg.contains('socket') || msg.contains('failed host lookup')) {
+      return 'Network error. Please check your connection.';
+    }
+    return 'Something went wrong. Please try again.';
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+}
