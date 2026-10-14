@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
-import '../customer/customer_home_placeholder.dart';
-import '../driver/driver_home_placeholder.dart';
-import 'login_screen.dart';
+import '../customer/customer_shell.dart';
+import '../driver/driver_shell.dart';
+import '../onboarding/onboarding_screen.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -25,7 +25,23 @@ class AuthGate extends StatelessWidget {
         );
 
       case AuthStatus.unauthenticated:
-        return const LoginScreen();
+        return FutureBuilder<bool>(
+          future: OnboardingScreen.hasSeenOnboarding(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Scaffold(
+                backgroundColor: AppTheme.neutralLight,
+                body: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentAmber),
+                  ),
+                ),
+              );
+            }
+            final hasSeen = snapshot.data ?? false;
+            return hasSeen ? const CustomerShell() : const OnboardingScreen();
+          },
+        );
 
       case AuthStatus.error:
         return Scaffold(
@@ -62,69 +78,11 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        // Security gate: Admins must never operate from the mobile app
-        if (profile.isAdmin) {
-          return Scaffold(
-            backgroundColor: AppTheme.primaryNavy,
-            body: SafeArea(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(28),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.desktop_windows,
-                          color: Colors.white,
-                          size: 48,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Admin Access Required',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Admin accounts must use the Quickopia Admin Portal on the web.\nThe mobile application is reserved for customers and drivers.',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 28),
-                      OutlinedButton(
-                        onPressed: () => auth.signOut(),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white54),
-                        ),
-                        child: const Text('Sign out'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-
-        // Role-based destination: Driver vs Customer
+        // Role-based destination: Drivers go to DriverShell,
+        // Customers and Admins/Staff enjoy the Customer mobile storefront.
         return profile.isDriver
-            ? const DriverHomePlaceholder()
-            : const CustomerHomePlaceholder();
+            ? const DriverShell()
+            : const CustomerShell();
     }
   }
 }

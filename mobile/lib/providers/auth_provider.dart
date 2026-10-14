@@ -12,6 +12,7 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus status = AuthStatus.loading;
   Profile? profile;
   String? errorMessage;
+  bool _isLoadingProfile = false;
 
   AuthProvider() {
     _init();
@@ -26,6 +27,7 @@ class AuthProvider extends ChangeNotifier {
         if (session == null) {
           status = AuthStatus.unauthenticated;
           profile = null;
+          errorMessage = null;
           notifyListeners();
         } else {
           await _loadProfile();
@@ -40,15 +42,16 @@ class AuthProvider extends ChangeNotifier {
         _loadProfile();
       } else {
         status = AuthStatus.unauthenticated;
-        notifyListeners();
       }
     } catch (e) {
       status = AuthStatus.unauthenticated;
-      notifyListeners();
     }
   }
 
   Future<void> _loadProfile() async {
+    if (_isLoadingProfile) return;
+    _isLoadingProfile = true;
+
     status = AuthStatus.loading;
     notifyListeners();
 
@@ -65,34 +68,55 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       status = AuthStatus.error;
       errorMessage = 'Something went wrong loading your account.';
+    } finally {
+      _isLoadingProfile = false;
     }
     notifyListeners();
   }
 
-  Future<String?> signUp({
+  bool get isAuthenticated => status == AuthStatus.authenticated && profile != null;
+
+  Future<void> reloadProfile() => _loadProfile();
+
+  Future<Map<String, dynamic>> signUp({
     required String email,
     required String password,
     required String fullName,
-    required String phone,
+    String? phone,
   }) async {
     try {
-      await _authService.signUp(
+      final res = await _authService.signUp(
         email: email,
         password: password,
         fullName: fullName,
         phone: phone,
       );
-      return null; // null = success
+      final bool requiresEmailConfirmation = res.session == null;
+      return {
+        'success': true,
+        'requiresEmailConfirmation': requiresEmailConfirmation,
+        'error': null,
+      };
     } on Exception catch (e) {
-      return _friendlyError(e);
+      return {
+        'success': false,
+        'requiresEmailConfirmation': false,
+        'error': _friendlyError(e),
+      };
     } catch (e) {
-      return 'Unexpected error. Please check your connection and try again.';
+      return {
+        'success': false,
+        'requiresEmailConfirmation': false,
+        'error': 'Unexpected error. Please check your connection and try again.',
+      };
     }
   }
 
   Future<String?> signIn({required String email, required String password}) async {
     try {
       await _authService.signIn(email: email, password: password);
+      // Immediately load profile so caller has role and full profile populated
+      await _loadProfile();
       return null;
     } on Exception catch (e) {
       return _friendlyError(e);
@@ -120,6 +144,8 @@ class AuthProvider extends ChangeNotifier {
       return 'An account with this email already exists.';
     } else if (msg.contains('password should be at least')) {
       return 'Password must be at least 6 characters.';
+    } else if (msg.contains('email not confirmed')) {
+      return 'Email not confirmed. Please disable "Confirm email" in Supabase Auth settings.';
     } else if (msg.contains('network') || msg.contains('socket') || msg.contains('failed host lookup')) {
       return 'Network error. Please check your connection.';
     }

@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <style>
+      .navy { fill: #082044; }
+      .orange { fill: #FF6C00; }
+      .red-left { fill: #FF2B40; }
+      .red-right { fill: #DE1A2E; }
+    </style>
+  </defs>
+
+  <!-- PARCEL / HOUSE INSIDE CART -->
+  <g id="parcel-house">
+    <!-- Orange House Frame -->
+    <path class="orange" fill-rule="evenodd" d="
+      M 256 60
+      L 350 115
+      L 350 215
+      L 162 215
+      L 162 115
+      Z
+      M 256 95
+      L 188 135
+      L 188 215
+      L 324 215
+      L 324 135
+      Z" />
+    
+    <!-- Red Envelope / Parcel Inside (2-Tone for 3D depth) -->
+    <!-- Left Flap & Body -->
+    <path class="red-left" d="
+      M 188 140
+      L 256 172
+      L 256 215
+      L 188 215
+      Z" />
+    <!-- Right Flap & Body -->
+    <path class="red-right" d="
+      M 256 172
+      L 324 140
+      L 324 215
+      L 256 215
+      Z" />
+  </g>
+
+  <!-- SHOPPING CART FRAME & SHELVES -->
+  <g id="cart-frame" class="navy">
+    <!-- Handle & Main Frame Strut -->
+    <path d="
+      M 86 164
+      C 86 153 95 144 106 144
+      L 142 144
+      C 152 144 160 151 162 161
+      L 194 300
+      C 196 308 203 314 212 314
+      L 326 314
+      C 337 314 346 323 346 334
+      C 346 345 337 354 326 354
+      L 212 354
+      C 183 354 160 334 154 305
+      L 125 184
+      L 106 184
+      C 95 184 86 175 86 164
+      Z" />
+
+    <!-- Top Shelf Bar -->
+    <rect x="175" y="205" width="205" height="22" rx="11" />
+
+    <!-- Middle Shelf Bar -->
+    <rect x="188" y="248" width="176" height="22" rx="11" />
+  </g>
+
+  <!-- SPEED MOTION STREAKS -->
+  <g id="speed-streaks" class="orange">
+    <!-- Top Streak -->
+    <path d="
+      M 398 178
+      L 450 178
+      C 458 178 464 184 461 192
+      L 443 208
+      C 440 212 435 214 430 214
+      L 378 214
+      C 370 214 364 208 367 200
+      L 385 184
+      C 388 180 393 178 398 178
+      Z" />
+
+    <!-- Middle Streak -->
+    <path d="
+      M 380 226
+      L 426 226
+      C 434 226 440 232 437 240
+      L 419 256
+      C 416 260 411 262 406 262
+      L 360 262
+      C 352 262 346 256 349 248
+      L 367 232
+      C 370 228 375 226 380 226
+      Z" />
+
+    <!-- Bottom Streak -->
+    <path d="
+      M 362 274
+      L 408 274
+      C 416 274 422 280 419 288
+      L 401 304
+      C 398 308 393 310 388 310
+      L 342 310
+      C 334 310 328 304 331 296
+      L 349 280
+      C 352 276 357 274 362 274
+      Z" />
+  </g>
+
+  <!-- CART WHEELS -->
+  <g id="cart-wheels" class="navy">
+    <!-- Left Wheel -->
+    <path fill-rule="evenodd" d="
+      M 206 366
+      C 225.33 366 241 381.67 241 401
+      C 241 420.33 225.33 436 206 436
+      C 186.67 436 171 420.33 171 401
+      C 171 381.67 186.67 366 206 366
+      Z
+      M 206 386
+      C 197.72 386 191 392.72 191 401
+      C 191 409.28 197.72 416 206 416
+      C 214.28 416 221 409.28 221 401
+      C 221 392.72 214.28 386 206 386
+      Z" />
+
+    <!-- Right Wheel -->
+    <path fill-rule="evenodd" d="
+      M 306 366
+      C 325.33 366 341 381.67 341 401
+      C 341 420.33 325.33 436 306 436
+      C 286.67 436 271 420.33 271 401
+      C 271 381.67 286.67 366 306 366
+      Z
+      M 306 386
+      C 297.72 386 291 392.72 291 401
+      C 291 409.28 297.72 416 306 416
+      C 314.28 416 321 409.28 321 401
+      C 321 392.72 314.28 386 306 386
+      Z" />
+  </g>
+</svg>

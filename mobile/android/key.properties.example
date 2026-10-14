@@ -1,0 +1,9 @@
+# mobile/android/key.properties.example
+# Copy this file to key.properties and configure with your production release keystore
+# To generate a keystore:
+# keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+storePassword=your_keystore_password
+keyPassword=your_key_password
+keyAlias=upload
+storeFile=../upload-keystore.jks

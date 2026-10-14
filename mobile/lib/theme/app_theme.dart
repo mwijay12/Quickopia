@@ -1,14 +1,33 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Quickopia Starter Brand Palette
-  // Primary Base: Deep Navy (Trust, Security, Tech-Forward)
+  // Quickopia Core Brand Palette
+  // Primary Base: Vibrant Quickopia Orange (matches Onboarding & Floating Pill Footer)
+  static const Color primaryOrange = Color(0xFFFF5200);
+  static const Color primaryOrangeDark = Color(0xFFE04800);
+  static const Color primaryOrangeLight = Color(0xFFFF6A00);
+
+  // Signature brand gradient for AppBars and Headers
+  static const List<Color> brandOrangeGradient = [
+    Color(0xFFFF5200),
+    Color(0xFFFF6600),
+    Color(0xFFFF4800),
+  ];
+
+  static const LinearGradient brandOrangeLinearGradient = LinearGradient(
+    colors: brandOrangeGradient,
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // Secondary & High-Contrast Anchors
   static const Color primaryNavy = Color(0xFF0B2545);
   static const Color primaryDark = Color(0xFF07192E);
 
-  // Accent: Warm Amber (Strictly for high-impact CTAs)
+  // Accent: Warm Amber & Accent Green for positive actions
   static const Color accentAmber = Color(0xFFF5A623);
-  static const Color accentOrange = Color(0xFFE89415);
+  static const Color accentOrange = Color(0xFFFF5200);
+  static const Color accentGreen = Color(0xFF2E7D32);
 
   // Neutrals: Clean Grays & Whites (WCAG-compliant readability)
   static const Color neutralLight = Color(0xFFF7F8FA);
@@ -29,8 +48,8 @@ class AppTheme {
   static ThemeData get lightTheme => ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryNavy,
-          primary: primaryNavy,
+          seedColor: primaryOrange,
+          primary: primaryOrange,
           secondary: accentAmber,
           surface: neutralLight,
           onPrimary: Colors.white,
@@ -38,15 +57,15 @@ class AppTheme {
         ),
         scaffoldBackgroundColor: neutralLight,
         appBarTheme: const AppBarTheme(
-          backgroundColor: primaryNavy,
+          backgroundColor: primaryOrange,
           foregroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: accentAmber,
-            foregroundColor: Colors.black,
+            backgroundColor: primaryOrange,
+            foregroundColor: Colors.white,
             textStyle: const TextStyle(fontWeight: FontWeight.bold),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(radiusMd),

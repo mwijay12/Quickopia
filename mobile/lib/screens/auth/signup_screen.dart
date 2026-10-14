@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/validators.dart';
+import '../customer/privacy_policy_screen.dart';
+import '../customer/terms_and_conditions_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -19,22 +22,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _loading = false;
   String? _error;
 
-  bool _isValidTzPhone(String v) {
-    final cleaned = v.replaceAll(' ', '').replaceAll('-', '');
-    return RegExp(r'^(\+255|0)[67]\d{8}$').hasMatch(cleaned);
-  }
-
-  String _normalizeTzPhone(String v) {
-    String cleaned = v.replaceAll(' ', '').replaceAll('-', '');
-    if (cleaned.startsWith('0')) {
-      return '+255${cleaned.substring(1)}';
-    }
-    if (!cleaned.startsWith('+')) {
-      return '+$cleaned';
-    }
-    return cleaned;
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -43,9 +30,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     final auth = context.read<AuthProvider>();
-    final normalizedPhone = _normalizeTzPhone(_phoneCtrl.text.trim());
+    final normalizedPhone = Validators.normalizeTzPhone(_phoneCtrl.text.trim());
 
-    final error = await auth.signUp(
+    final res = await auth.signUp(
       email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
       fullName: _fullNameCtrl.text.trim(),
@@ -53,13 +40,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
 
     if (!mounted) return;
+    final bool success = res['success'] == true;
+    final String? err = res['error'] as String?;
+
     setState(() {
       _loading = false;
-      _error = error;
+      _error = err;
     });
 
-    if (error == null) {
-      // On success, pop back or AuthGate transitions automatically
+    if (success) {
+      // Auto sign in on successful signup
+      await auth.signIn(
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text,
+      );
+      if (!mounted) return;
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -143,7 +138,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     if (v == null || v.trim().isEmpty) {
                       return 'Phone number is required';
                     }
-                    if (!_isValidTzPhone(v.trim())) {
+                    if (!Validators.isValidTzPhone(v.trim())) {
                       return 'Enter a valid TZ phone (e.g. 0712345678 or +255712345678)';
                     }
                     return null;
@@ -220,7 +215,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ],
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 18),
+
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      'By creating an account, you agree to our ',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    InkWell(
+                      onTap: () => TermsAndConditionsScreen.showModal(context),
+                      child: const Text(
+                        'Terms & Conditions',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryNavy,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ' and ',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    InkWell(
+                      onTap: () => PrivacyPolicyScreen.showModal(context),
+                      child: const Text(
+                        'Privacy Policy / Sera ya Faragha',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryNavy,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
 
                 ElevatedButton(
                   onPressed: _loading ? null : _submit,

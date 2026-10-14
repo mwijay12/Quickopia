@@ -9,13 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        'quickopia-navy': '#0B2545',
+        'quickopia-amber': '#F5A623',
         quickopia: {
-          navy: "#0B2545",
-          dark: "#07192E",
-          amber: "#F5A623",
-          orange: "#E89415",
-          light: "#F7F8FA",
-          muted: "#8E8E93",
+          navy: '#0B2545',
+          dark: '#07192E',
+          amber: '#F5A623',
+          orange: '#E89415',
+          light: '#F7F8FA',
+          muted: '#8E8E93',
         },
       },
     },

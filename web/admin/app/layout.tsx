@@ -1,9 +1,13 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Quickopia — Admin Portal",
-  description: "Supermarket fulfillment, catalog management and driver dispatch",
+  title: 'Quickopia — Admin Portal',
+  description: 'Supermarket fulfillment, catalog management and driver dispatch',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({
@@ -13,7 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="bg-gray-50 text-gray-900 antialiased min-h-screen">
+        {children}
+      </body>
     </html>
   );
 }

@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.73.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
     "lucide-react": "^0.475.0",
@@ -24,5 +25,9 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.5.4"
+  },
+  "optionalDependencies": {
+    "@next/swc-wasm-nodejs": "^14.2.24",
+    "@types/node": "^20.19.43"
   }
 }

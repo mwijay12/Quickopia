@@ -10,22 +10,26 @@ class AuthService {
   Session? get currentSession => _client.auth.currentSession;
   User? get currentUser => _client.auth.currentUser;
 
-  Future<void> signUp({
+  Future<AuthResponse> signUp({
     required String email,
     required String password,
     required String fullName,
-    required String phone,
+    String? phone,
   }) async {
-    await _client.auth.signUp(
+    final data = <String, dynamic>{
+      'full_name': fullName,
+    };
+    if (phone != null && phone.trim().isNotEmpty) {
+      data['phone'] = phone.trim();
+    }
+
+    return await _client.auth.signUp(
       email: email,
       password: password,
-      data: {
-        'full_name': fullName,
-        'phone': phone,
-      },
+      data: data,
     );
     // Note: the `profiles` row is created automatically by the Postgres
-    // trigger from Prompt 1 (handle_new_user) — no manual insert needed here.
+    // trigger (handle_new_user) — no manual insert needed here.
   }
 
   Future<void> signIn({required String email, required String password}) async {

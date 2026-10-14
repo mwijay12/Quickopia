@@ -25,7 +25,7 @@ class SupabaseConfig {
 
     final anonKey = dotenv.env['SUPABASE_ANON_KEY']?.trim().isNotEmpty == true
         ? dotenv.env['SUPABASE_ANON_KEY']!.trim()
-        : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
+        : 'YOUR_SUPABASE_ANON_KEY_HERE';
 
     try {
       await Supabase.initialize(
