@@ -1,4 +1,5 @@
 import OrderKanbanBoard from '@/components/kanban/OrderKanbanBoard';
+import BackendHealthCard from '@/components/system/BackendHealthCard';
 
 export default function DashboardHomePage() {
   return (
@@ -14,7 +15,11 @@ export default function DashboardHomePage() {
         </div>
       </div>
 
+      {/* Supabase Free-Tier Liveness & Keep-Alive Monitor */}
+      <BackendHealthCard />
+
       <OrderKanbanBoard />
     </div>
   );
 }
+

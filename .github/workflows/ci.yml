@@ -1,0 +1,171 @@
+name: Quickopia CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: Secrets & Repository Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Keep-Alive Workflow Exists
+        run: |
+          if [ ! -f .github/workflows/supabase-keepalive.yml ]; then
+            echo "::error::supabase-keepalive.yml is missing! Free tier projects will pause after 7 days without it."
+            exit 1
+          fi
+
+      - name: Scan for Secret Leaks in Tracked Files
+        run: |
+          echo "Scanning tracked files for accidental credential commits..."
+          # Fail if any tracked .env exists (excluding .env.example)
+          TRACKED_ENVS=$(git ls-files | grep -E '(^|/)\.env(\..+)?$' | grep -v '\.env\.example$' || true)
+          if [ -n "$TRACKED_ENVS" ]; then
+            echo "::error::Tracked .env file detected in git:"
+            echo "$TRACKED_ENVS"
+            exit 1
+          fi
+
+          # Fail if SUPABASE_SERVICE_ROLE_KEY or service-role JWT is hardcoded into client source
+          SERVICE_ROLE_LEAKS=$(git grep -inE '(service_role_key|SUPABASE_SERVICE_ROLE_KEY\s*=\s*["\x27]eyJ)' -- 'mobile/lib' 'web/storefront' || true)
+          if [ -n "$SERVICE_ROLE_LEAKS" ]; then
+            echo "::error::Detected potential service_role key leak in client code:"
+            echo "$SERVICE_ROLE_LEAKS"
+            exit 1
+          fi
+
+          echo "✅ Secret scan passed cleanly."
+
+  mobile:
+    name: Mobile App (Flutter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: 'stable'
+          cache: true
+
+      - name: Write Placeholder .env for Build & Testing
+        run: |
+          cat << 'EOF' > .env
+          SUPABASE_URL=https://placeholder.supabase.co
+          SUPABASE_ANON_KEY=placeholder-anon-key
+          CLOUDINARY_CLOUD_NAME=placeholder-cloud
+          SENTRY_DSN=
+          EOF
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Verify Dart Formatting (Warning Only)
+        run: |
+          dart format --output=none --set-exit-if-changed lib/ || echo "::warning::Some files require formatting with 'dart format lib/'"
+
+      - name: Static Analysis
+        run: flutter analyze
+
+      - name: Run Test Suite
+        run: flutter test
+
+  web:
+    name: Web App (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [admin, storefront]
+    defaults:
+      run:
+        working-directory: web/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: web/${{ matrix.app }}/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Type Check (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Production Build Check
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: placeholder
+          NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: placeholder
+        run: npm run build
+
+  migrations:
+    name: Supabase Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Migration Numbering Continuity
+        run: |
+          cd supabase/migrations
+          FILES=$(ls -1 [0-9][0-9][0-9][0-9]_*.sql | sort)
+          EXPECTED=1
+          for f in $FILES; do
+            NUM=$(echo "$f" | cut -d'_' -f1 | sed 's/^0*//')
+            if [ -z "$NUM" ]; then NUM=0; fi
+            if [ "$NUM" -ne "$EXPECTED" ]; then
+              echo "::error::Migration sequence gap detected: expected $(printf "%04d" $EXPECTED) but found $f"
+              exit 1
+            fi
+            EXPECTED=$((EXPECTED + 1))
+          done
+          echo "✅ All $((EXPECTED - 1)) migrations are sequentially numbered with no gaps."
+
+      - name: Assert Heartbeat Migration Present
+        run: |
+          if [ ! -f supabase/migrations/0023_system_heartbeat.sql ]; then
+            echo "::error::0023_system_heartbeat.sql is missing!"
+            exit 1
+          fi
+
+  ci-status:
+    name: CI Status Aggregate
+    needs: [secrets, mobile, web, migrations]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify All Jobs Passed
+        run: |
+          if [ "${{ needs.secrets.result }}" != "success" ] || \
+             [ "${{ needs.mobile.result }}" != "success" ] || \
+             [ "${{ needs.web.result }}" != "success" ] || \
+             [ "${{ needs.migrations.result }}" != "success" ]; then
+            echo "::error::One or more CI checks failed."
+            exit 1
+          fi
+          echo "✅ All CI checks passed successfully."

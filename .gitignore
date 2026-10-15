@@ -14,6 +14,8 @@ web/**/node_modules/
 web/**/.env.local
 web/**/out/
 web/**/.vercel/
+*.tsbuildinfo
+
 
 # Supabase
 supabase/.branches/

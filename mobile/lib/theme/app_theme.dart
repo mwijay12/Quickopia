@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'quickopia_page_transitions.dart';
+
 
 class AppTheme {
   // Quickopia Core Brand Palette
@@ -72,5 +74,18 @@ class AppTheme {
             ),
           ),
         ),
+        splashColor: primaryOrange.withValues(alpha: 0.08),
+        highlightColor: primaryOrange.withValues(alpha: 0.05),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: QuickopiaPageTransitionsBuilder(),
+            TargetPlatform.iOS: QuickopiaPageTransitionsBuilder(),
+            TargetPlatform.fuchsia: QuickopiaPageTransitionsBuilder(),
+            TargetPlatform.linux: QuickopiaPageTransitionsBuilder(),
+            TargetPlatform.macOS: QuickopiaPageTransitionsBuilder(),
+            TargetPlatform.windows: QuickopiaPageTransitionsBuilder(),
+          },
+        ),
       );
 }
+
