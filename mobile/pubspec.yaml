@@ -31,6 +31,8 @@ dependencies:
   # Backend & Realtime
   supabase_flutter: ^2.8.0
   flutter_dotenv: ^5.1.0
+  http: ^1.2.0
+
 
   # Mapping (Zero-cost OpenStreetMap)
   flutter_map: ^7.0.2
