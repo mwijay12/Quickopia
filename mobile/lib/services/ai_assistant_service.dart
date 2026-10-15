@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../config/supabase_config.dart';
 import '../models/supermarket_settings_model.dart';
 
 class AiChatMessage {
@@ -139,7 +140,38 @@ Always keep the tag at the very end of your message.
       }
 
       try {
-        // 2. Try Groq Pool First (Ultra-fast Llama-3.3-70b)
+        // 1. Try Supabase Edge AI Function first (Server-side key security)
+        if (SupabaseConfig.isConfigured) {
+          try {
+            final res = await SupabaseConfig.client.functions.invoke(
+              'ai-assistant',
+              body: {
+                'message': userMessage,
+                'history': recent.map((m) => {'role': m.role, 'content': m.content}).toList(),
+                'settings': {
+                  'supermarketName': settings.supermarketName,
+                  'branchAddress': settings.branchAddress,
+                  'operatingHours': settings.operatingHours,
+                  'phone': settings.phone,
+                  'email': settings.email,
+                  'returnWindowHours': settings.returnWindowHours,
+                },
+              },
+            ).timeout(const Duration(seconds: 22));
+
+            if (res.status == 200 && res.data is Map) {
+              final reply = res.data['reply'] as String?;
+              if (reply != null && reply.trim().isNotEmpty) {
+                responseText = reply;
+                break;
+              }
+            }
+          } catch (e) {
+            debugPrint('Edge AI proxy attempt: $e');
+          }
+        }
+
+        // 2. Fallback to direct client pools if configured locally (offline / dev)
         responseText = await _tryGroqPool(messagesPayload);
 
         // 3. Fallback to Gemini 15-Key Pool (Google gemini-flash-latest / gemini-3.6-flash)
@@ -422,6 +454,26 @@ Always keep the tag at the very end of your message.
         .trim();
 
     if (cleanText.isEmpty) return null;
+
+    // 1. Try Supabase Edge TTS Function first (keeps ElevenLabs keys secure on backend)
+    if (SupabaseConfig.isConfigured) {
+      try {
+        final res = await SupabaseConfig.client.functions.invoke(
+          'ai-tts',
+          body: {'text': cleanText},
+        ).timeout(const Duration(seconds: 14));
+
+        if (res.status == 200) {
+          if (res.data is Uint8List) {
+            return res.data as Uint8List;
+          } else if (res.data is List<int>) {
+            return Uint8List.fromList(res.data as List<int>);
+          }
+        }
+      } catch (e) {
+        debugPrint('Supabase Edge TTS attempt failed: $e');
+      }
+    }
 
     const voiceId = '21m00Tcm4TlvDq8ikWAM'; // Rachel (clear, friendly multilingual voice)
 

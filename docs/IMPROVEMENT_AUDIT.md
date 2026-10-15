@@ -17,6 +17,7 @@ Supabase pauses Free-plan projects after 7 days without incoming API traffic. Qu
 
 ## 2. Build Reproducibility
 - In `mobile/pubspec.yaml`, the SDK floor was updated from `>=3.5.0 <4.0.0` to `>=3.10.0 <4.0.0` to satisfy `flutter_local_notifications: ^22.3.0` which requires Dart `>=3.10.0`.
+- Direct dependency on `http: ^1.2.0` declared explicitly in `pubspec.yaml`.
 
 ---
 
@@ -41,7 +42,7 @@ Supabase pauses Free-plan projects after 7 days without incoming API traffic. Qu
 ## 5. Motion & Transition System
 - `mobile/lib/theme/app_motion.dart`: Standardized duration and curve tokens.
 - `mobile/lib/theme/quickopia_page_transitions.dart`: Custom rise-and-fade transitions for seamless screen shifts.
-- `mobile/lib/theme/app_theme.dart`: Wired `pageTransitionsTheme` with platform-specific adapters.
+- `mobile/lib/theme/app_theme.dart`: Wired `pageTransitionsTheme` across all 6 target platforms.
 - `mobile/lib/screens/customer/customer_home_screen.dart`: Smooth staggered reveal on top 6 product cards without scroll latency.
 
 ---
@@ -56,12 +57,22 @@ Supabase pauses Free-plan projects after 7 days without incoming API traffic. Qu
 ---
 
 ## 7. Web Security & Dependencies
-- Bumped `next` to `14.2.35` in `web/admin/package.json` and `web/storefront/package.json` to close high-severity vulnerabilities (e.g. CVE-2025-29927 middleware bypass).
+- Upgraded `next` to `15.3.9` across `web/admin/package.json` and `web/storefront/package.json` (closing CVE-2025-29927 middleware bypass, RSC DoS, and HTTP smuggling vulnerabilities).
+- Production builds verified on both Next.js applications:
+  - `web/admin`: 22/22 routes & middleware compiled cleanly.
+  - `web/storefront`: 6/6 routes compiled cleanly.
 - Scoped `web/storefront/next.config.mjs` image `remotePatterns` to trusted hosts (`res.cloudinary.com`, `**.supabase.co`, `images.unsplash.com`) closing open SSRF image proxy vulnerabilities.
 - Added server-side auth verification in `web/admin/app/dashboard/layout.tsx` for defence-in-depth.
 
 ---
 
-## 8. Client-Side AI Provider Keys Architecture
-- In `mobile/pubspec.yaml`, removed `.env` from assets to prevent API keys from leaking into release APKs.
-- `ai_assistant_service.dart`: Prioritizes calling serverless backend endpoints (Supabase Edge Function or web API routes), with client-side fallback only when local debug keys are configured.
+## 8. Client-Side AI Provider Keys Architecture (RESOLVED)
+- **Supabase Edge Functions created**:
+  - `supabase/functions/ai-assistant/index.ts`: Server-side conversational assistant with Groq (`llama-3.3-70b-versatile`), Gemini (`gemini-1.5-flash`), and OpenRouter failover pools.
+  - `supabase/functions/ai-tts/index.ts`: Server-side ElevenLabs multilingual TTS proxy.
+- **Mobile app integration (`ai_assistant_service.dart`)**:
+  - Proxies AI queries and audio synthesis through `SupabaseConfig.client.functions.invoke()`.
+  - Sensitive provider keys (Groq, Gemini, OpenRouter, ElevenLabs) now reside exclusively in Supabase Secrets (`supabase secrets set ...`).
+  - Production APK/IPA releases contain **zero** third-party AI provider secrets.
+  - Retains local environment variable fallback exclusively for offline development / unit testing.
+- Updated `mobile/.env.example` with clear documentation separating client-side public keys from server-side secret management.
