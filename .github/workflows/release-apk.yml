@@ -32,10 +32,12 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # Secrets -> .env: this is HOW keys enter the cloud-built APK.
-      # SUPABASE_URL + SUPABASE_ANON_KEY are REQUIRED (already in your Secrets).
-      # AI pools are OPTIONAL: only needed for the in-app fallback path.
-      # Edge-function AI (primary path) uses Supabase secrets server-side instead.
+      # Secrets -> .env: this is HOW public config enters the cloud-built APK.
+      # SUPABASE_URL + publishable/anon key, Cloudinary name, Sentry DSN are
+      # PUBLIC by design (sent with every request). AI provider keys
+      # (GROQ/GEMINI/OPENROUTER/ELEVENLABS) live ONLY in Supabase Secrets
+      # server-side — the Edge-only mobile client never reads them, so they
+      # MUST NOT be written here (APK is a ZIP; bundled .env is readable).
       # NEVER add SERVICE_ROLE / sb_secret_* or DB passwords here.
       - name: Write .env from Secrets
         run: |
@@ -45,11 +47,15 @@ jobs:
           SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
           SENTRY_DSN=${{ secrets.SENTRY_DSN_MOBILE }}
-          GROQ_KEYS=${{ secrets.GROQ_KEYS }}
-          GEMINI_KEYS=${{ secrets.GEMINI_KEYS }}
-          OPENROUTER_KEYS=${{ secrets.OPENROUTER_KEYS }}
-          ELEVENLABS_KEYS=${{ secrets.ELEVENLABS_KEYS }}
           EOF
+
+      - name: Guard .env (reject server keys)
+        run: |
+          if grep -qiE 'sb_secret_|service_role|GROQ_KEYS|GEMINI_KEYS|OPENROUTER_KEYS|ELEVENLABS_KEYS' .env; then
+            echo "::error::Blocked: .env for the APK must not contain server/AI keys."
+            exit 1
+          fi
+          echo "✅ .env guard passed (public values only)."
 
       - name: Install Dependencies
         run: flutter pub get

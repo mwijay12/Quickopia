@@ -61,8 +61,13 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-  # NOTE: .env is intentionally NOT listed here.
-  # Bundling .env would embed secrets inside the APK (APK = ZIP).
+    - .env
+  # NOTE: .env IS bundled because flutter_dotenv loads it via the asset
+  # bundle (supabase_config.dart: dotenv.load). This is safe ONLY because
+  # mobile/.env holds public publishable values (SUPABASE_URL +
+  # publishable/anon key, Cloudinary name, Sentry DSN) — NEVER AI provider
+  # keys (GROQ/GEMINI/OPENROUTER/ELEVENLABS live in Supabase Secrets) and
+  # NEVER sb_secret_/service_role keys (CI guard rejects them).
   #   - images/a_dot_ham.jpeg
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
