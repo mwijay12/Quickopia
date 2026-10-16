@@ -85,7 +85,7 @@ Always keep the tag at the very end of your message.`;
 
     let reply: string | null = null;
 
-    // 1. Try Groq Pool (llama-3.3-70b-versatile)
+    // 1. Try Groq Pool (openai/gpt-oss-20b — verified live Oct 2026)
     const groqKeys = getKeys('GROQ_API_KEY', 'GROQ_KEYS');
     for (const key of groqKeys) {
       try {
@@ -96,7 +96,7 @@ Always keep the tag at the very end of your message.`;
             Authorization: `Bearer ${key}`,
           },
           body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
+            model: 'openai/gpt-oss-20b',
             messages: formattedMessages,
             temperature: 0.6,
             max_tokens: 450,

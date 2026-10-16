@@ -91,7 +91,7 @@ class GroqProvider implements AIProvider {
   async generate(systemPrompt: string, userPrompt: string): Promise<string> {
     const url = 'https://api.groq.com/openai/v1/chat/completions';
     const payload = {
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-20b',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -154,6 +154,13 @@ class OpenRouterProvider implements AIProvider {
     const data = await res.json();
     return data?.choices?.[0]?.message?.content ?? '';
   }
+}
+
+function getPool(poolName: string, singleName: string): string[] {
+  const pool = Deno.env.get(poolName);
+  if (pool) return pool.split(',').map((s) => s.trim()).filter(Boolean);
+  const single = Deno.env.get(singleName);
+  return single ? [single.trim()] : [];
 }
 
 function sanitizeOutput(raw: string): string {
@@ -240,29 +247,48 @@ serve(async (req) => {
       category?.trim() || 'General Supermarket'
     }\nKeywords: ${keywords?.trim() || 'none provided'}`;
 
-    // 4. Select AI Provider with fallback
-    const groqKey = Deno.env.get('GROQ_API_KEY');
-    const geminiKey = Deno.env.get('GEMINI_API_KEY');
-    const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
+    // 4. Select AI Provider with pool failover (free-tier friendly)
+    // Keys live ONLY in Supabase Secrets: GROQ_KEYS / GEMINI_KEYS / OPENROUTER_KEYS
+    const groqPool = getPool('GROQ_KEYS', 'GROQ_API_KEY');
+    const geminiPool = getPool('GEMINI_KEYS', 'GEMINI_API_KEY');
+    const openRouterPool = getPool('OPENROUTER_KEYS', 'OPENROUTER_API_KEY');
 
-    let provider: AIProvider;
-    if (groqKey) {
-      provider = new GroqProvider(groqKey);
-    } else if (geminiKey) {
-      provider = new GeminiProvider(geminiKey);
-    } else if (openRouterKey) {
-      provider = new OpenRouterProvider(openRouterKey);
-    } else {
+    let rawResult = '';
+    let lastErr = '';
+    if (groqPool.length > 0) {
+      for (const k of groqPool) {
+        try {
+          rawResult = await new GroqProvider(k).generate(SYSTEM_INSTRUCTION, userPrompt);
+          if (rawResult.trim()) break;
+        } catch (e) { lastErr = String(e); }
+      }
+    }
+    if (!rawResult.trim() && geminiPool.length > 0) {
+      for (const k of geminiPool) {
+        try {
+          rawResult = await new GeminiProvider(k).generate(SYSTEM_INSTRUCTION, userPrompt);
+          if (rawResult.trim()) break;
+        } catch (e) { lastErr = String(e); }
+      }
+    }
+    if (!rawResult.trim() && openRouterPool.length > 0) {
+      for (const k of openRouterPool) {
+        try {
+          rawResult = await new OpenRouterProvider(k).generate(SYSTEM_INSTRUCTION, userPrompt);
+          if (rawResult.trim()) break;
+        } catch (e) { lastErr = String(e); }
+      }
+    }
+    if (!rawResult.trim()) {
       return new Response(
         JSON.stringify({
-          error: 'AI provider is not configured (missing GROQ_API_KEY or GEMINI_API_KEY).',
+          error: 'AI provider is not configured or all keys busy (set GROQ_KEYS in Supabase Secrets).' + (lastErr ? ` Last: ${lastErr}` : ''),
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // 5. Generate and sanitize output
-    const rawResult = await provider.generate(SYSTEM_INSTRUCTION, userPrompt);
     const cleaned = sanitizeOutput(rawResult);
 
     if (cleaned.length < 15 || cleaned.length > 450) {

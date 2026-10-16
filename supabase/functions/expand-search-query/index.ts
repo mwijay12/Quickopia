@@ -19,6 +19,13 @@ Do not explain, do not add commentary, output ONLY a valid JSON array of strings
 Example: For "sukari" output: ["sukari", "sugar", "white sugar", "brown sugar"]
 Example: For "cooking oil" output: ["cooking oil", "mafuta", "sunflower oil", "vegetable oil"]`;
 
+function getPool(poolName: string, singleName: string): string[] {
+  const pool = Deno.env.get(poolName);
+  if (pool) return pool.split(',').map((s) => s.trim()).filter(Boolean);
+  const single = Deno.env.get(singleName);
+  return single ? [single.trim()] : [];
+}
+
 function extractJsonArray(raw: string, fallbackTerm: string): string[] {
   try {
     // Strip markdown codeblocks if present
@@ -98,84 +105,99 @@ serve(async (req) => {
       });
     }
 
-    // 2. Call AI Provider for Query Expansion
-    const groqKey = Deno.env.get('GROQ_API_KEY');
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
-    const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
+    // 2. Call AI Provider for Query Expansion (pool failover, keys in Supabase Secrets only)
+    const groqPool = getPool('GROQ_KEYS', 'GROQ_API_KEY');
+    const geminiPool = getPool('GEMINI_KEYS', 'GEMINI_API_KEY');
+    const openRouterPool = getPool('OPENROUTER_KEYS', 'OPENROUTER_API_KEY');
 
     let rawOutput = '';
 
-    if (groqKey) {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqKey}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: SYSTEM_INSTRUCTION },
-            { role: 'user', content: `Query: ${normalized}` },
-          ],
-          temperature: 0.2,
-          max_tokens: 120,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        rawOutput = data?.choices?.[0]?.message?.content ?? '';
-      }
-    } else if (apiKey) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      const payload = {
-        systemInstruction: {
-          parts: [{ text: SYSTEM_INSTRUCTION }],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `Query: ${normalized}` }],
+    for (const groqKey of groqPool) {
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${groqKey}`,
           },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 120,
-        },
-      };
+          body: JSON.stringify({
+            model: 'openai/gpt-oss-20b',
+            messages: [
+              { role: 'system', content: SYSTEM_INSTRUCTION },
+              { role: 'user', content: `Query: ${normalized}` },
+            ],
+            temperature: 0.2,
+            max_tokens: 120,
+          }),
+        });
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+        if (res.ok) {
+          const data = await res.json();
+          rawOutput = data?.choices?.[0]?.message?.content ?? '';
+          if (rawOutput.trim()) break;
+        }
+      } catch { /* rotate to next key */ }
+    }
+    if (!rawOutput.trim()) {
+      for (const apiKey of geminiPool) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+          const payload = {
+            systemInstruction: {
+              parts: [{ text: SYSTEM_INSTRUCTION }],
+            },
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: `Query: ${normalized}` }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 120,
+            },
+          };
 
-      if (res.ok) {
-        const data = await res.json();
-        rawOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            rawOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+            if (rawOutput.trim()) break;
+          }
+        } catch { /* rotate */ }
       }
-    } else if (openRouterKey) {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${openRouterKey}`,
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-flash-1.5',
-          messages: [
-            { role: 'system', content: SYSTEM_INSTRUCTION },
-            { role: 'user', content: `Query: ${normalized}` },
-          ],
-          temperature: 0.2,
-          max_tokens: 120,
-        }),
-      });
+    }
+    if (!rawOutput.trim()) {
+      for (const openRouterKey of openRouterPool) {
+        try {
+          const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${openRouterKey}`,
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-flash-1.5',
+              messages: [
+                { role: 'system', content: SYSTEM_INSTRUCTION },
+                { role: 'user', content: `Query: ${normalized}` },
+              ],
+              temperature: 0.2,
+              max_tokens: 120,
+            }),
+          });
 
-      if (res.ok) {
-        const data = await res.json();
-        rawOutput = data?.choices?.[0]?.message?.content ?? '';
+          if (res.ok) {
+            const data = await res.json();
+            rawOutput = data?.choices?.[0]?.message?.content ?? '';
+            if (rawOutput.trim()) break;
+          }
+        } catch { /* rotate */ }
       }
     }
 
