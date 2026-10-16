@@ -36,8 +36,11 @@ jobs:
             exit 1
           fi
 
-          # Fail if SUPABASE_SERVICE_ROLE_KEY or service-role JWT is hardcoded into client source
-          SERVICE_ROLE_LEAKS=$(git grep -inE '(service_role_key|SUPABASE_SERVICE_ROLE_KEY\s*=\s*["\x27]eyJ)' -- 'mobile/lib' 'web/storefront' || true)
+          # Fail if a real service_role JWT is hardcoded into client source.
+          # NOTE: the pattern requires an actual KEY ASSIGNMENT (= "eyJ...")
+          # so the guard message in mobile/lib/config/supabase_config.dart
+          # (which only MENTIONS the key name) does not false-positive.
+          SERVICE_ROLE_LEAKS=$(git grep -inE '(service_role_key|SUPABASE_SERVICE_ROLE_KEY)\s*=\s*["\x27]eyJ' -- 'mobile/lib' 'web/storefront' || true)
           if [ -n "$SERVICE_ROLE_LEAKS" ]; then
             echo "::error::Detected potential service_role key leak in client code:"
             echo "$SERVICE_ROLE_LEAKS"
