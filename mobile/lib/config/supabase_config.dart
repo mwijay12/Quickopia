@@ -24,7 +24,9 @@ class SupabaseConfig {
 
   static bool get isConfigured {
     final url = dotenv.env['SUPABASE_URL'] ?? '';
-    final key = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+    final key = dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ??
+        dotenv.env['SUPABASE_ANON_KEY'] ??
+        '';
     return url.isNotEmpty &&
         url.startsWith('https://') &&
         !url.contains('placeholder') &&
@@ -54,8 +56,14 @@ class SupabaseConfig {
     }
 
     // ── 2. Resolve credentials ──────────────────────────────────────────────
+    // New Supabase projects use sb_publishable_* keys. Support both:
+    // SUPABASE_PUBLISHABLE_KEY (new) falls back to SUPABASE_ANON_KEY (legacy).
     final rawUrl = dotenv.env['SUPABASE_URL']?.trim() ?? '';
-    final rawKey = dotenv.env['SUPABASE_ANON_KEY']?.trim() ?? '';
+    final rawKey = (dotenv.env['SUPABASE_PUBLISHABLE_KEY']?.trim().isNotEmpty ==
+            true
+        ? dotenv.env['SUPABASE_PUBLISHABLE_KEY']?.trim()
+        : dotenv.env['SUPABASE_ANON_KEY']?.trim()) ??
+        '';
 
     String url;
     String anonKey;
@@ -122,7 +130,11 @@ class SupabaseConfig {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   /// Decodes the JWT payload (second segment) and checks the `role` claim.
+  /// Also rejects new-format `sb_secret_*` keys which must never ship in the app.
   static bool _isServiceRoleJwt(String jwt) {
+    if (jwt.startsWith('sb_secret_')) return true;
+    // Publishable keys are safe for client use.
+    if (jwt.startsWith('sb_publishable_')) return false;
     try {
       final parts = jwt.split('.');
       if (parts.length != 3) return false;

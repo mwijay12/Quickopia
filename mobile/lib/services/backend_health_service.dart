@@ -61,7 +61,8 @@ class BackendHealthService {
   /// Lightweight — uses the public anon key, no auth required.
   Future<BackendHealth> probe({Duration timeout = const Duration(seconds: 5)}) async {
     final url = dotenv.env['SUPABASE_URL'];
-    final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
+    final anonKey = dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ??
+        dotenv.env['SUPABASE_ANON_KEY'];
 
     if (url == null ||
         url.contains('placeholder') ||

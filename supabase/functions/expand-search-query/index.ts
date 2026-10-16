@@ -80,7 +80,7 @@ serve(async (req) => {
 
     // 1. Check Postgres Cache first
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseServiceKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY')) ?? '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: cached } = await supabase
